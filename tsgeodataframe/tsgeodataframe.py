@@ -142,7 +142,7 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
         copied = super().copy(deep=deep)
         return self._constructor(copied).__finalize__(self)
     
-    
+
     ###########################################################################
     # TESTING FOR STATIONARITY ################################################   
 
@@ -164,20 +164,20 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
             #TODO: Check again the conditions for rejection H_0 hypotethis
             #and check the combination-results again, again and again
 
-    def kpss_stat(self, in_ts, **kwargs):
+    def kpss_stat(self, in_ts, p_crit=0.05, **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
         res_kpss = kpss(in_ts, **kwargs)
         
-        if res_kpss[1] >= 0.05:     #fail to reject KPSS-h_0 -> trend-stationary           
+        if res_kpss[1] >= p_crit:     #fail to reject KPSS-h_0 -> trend-stationary           
             return 1                #trend-statonary - trend-removement by regression
         else:                       #reject KPSS-h_0 -> stationary
             return 0                #reject KPSS-h_0 -> non-trend-stationary
     
-    def adf_stat(self, in_ts, **kwargs):
+    def adf_stat(self, in_ts, p_crit=0.05, **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
         res_adf = adfuller(in_ts, **kwargs)
         
-        if res_adf[1] >= 0.05:      #fail to reject ADF-h_0 -> non-stationary           
+        if res_adf[1] >= p_crit:      #fail to reject ADF-h_0 -> non-stationary           
             return 1                #non-stationary
         else:                       #reject ADF-h_0 -> stationary
             return 0                #reject ADF_h_= -> stationary
@@ -217,7 +217,7 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
     # END FIT POLYNOMIAL MODEL ################################################
     ###########################################################################
     
-    def df_hist(self, column=None):
+    def df_hist(self, column=None): #dummy dummy dummy dummy
         if column==None or not(is_numeric_dtype(self[column])): 
             return -2
         else:
