@@ -163,30 +163,30 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
                 return 1            #difference stationary: trend remove by differencing
         
         #TODO: Cechk again the conditions for rejection H_0 hypotethis
-    def kpss_stat(self, in_ts, model='c'):
+    def kpss_stat(self, in_ts, **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
-        res_kpss = kpss(in_ts, regression=model, nlags='auto')
+        res_kpss = kpss(in_ts, **kwargs)
         
         if res_kpss[1] >= 0.05:     #fail to reject KPSS-h_0 -> trend-stationary           
             return 1                #trend-statonary - trend-removement by regression
         else:                       #reject KPSS-h_0 -> stationary
             return 0                #reject KPSS-h_0 -> non-trend-stationary
     
-    def adf_stat(self, in_ts, autolag='AIC'):
+    def adf_stat(self, in_ts, **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
-        res_adf = adfuller(in_ts, autolag=autolag)
+        res_adf = adfuller(in_ts, **kwargs)
         
         if res_adf[1] >= 0.05:      #fail to reject ADF-h_0 -> non-stationary           
             return 1                #non-stationary
         else:                       #reject ADF-h_0 -> stationary
             return 0                #reject ADF_h_= -> stationary
                 
-    def ts_adf(self, autolag='AIC'):
+    def ts_adf(self, **kwargs):
         return self.apply(lambda row: self.adf_stat(row[self.dt_dats], 
-                                                autolag=autolag), axis=1)
-    def ts_kpss(self, model='c'):
+                                                **kwargs), axis=1)
+    def ts_kpss(self, **kwargs):
         return self.apply(lambda row: self.kpss_stat(row[self.dt_dats], 
-                                                     model), axis=1)
+                                                     **kwargs), axis=1)
             
     def ts_stationarity(self):
         return self.apply(lambda row: 
