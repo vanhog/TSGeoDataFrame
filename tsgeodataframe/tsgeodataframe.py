@@ -164,29 +164,29 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
             #TODO: Check again the conditions for rejection H_0 hypotethis
             #and check the combination-results again, again and again
 
-    def kpss_stat(self, in_ts, p_crit=0.05, **kwargs):
+    def __kpss_flag(self, in_ts, p_crit=0.05, **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
         res_kpss = kpss(in_ts, **kwargs)
         
-        if res_kpss[1] >= p_crit:     #fail to reject KPSS-h_0 -> trend-stationary           
+        if res_kpss[1] >= p_crit:   #fail to reject KPSS-h_0 -> trend-stationary           
             return 1                #trend-statonary - trend-removement by regression
         else:                       #reject KPSS-h_0 -> stationary
             return 0                #reject KPSS-h_0 -> non-trend-stationary
     
-    def adf_stat(self, in_ts, p_crit=0.05, **kwargs):
+    def __adf_flag(self, in_ts, p_crit=0.05, **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
         res_adf = adfuller(in_ts, **kwargs)
         
-        if res_adf[1] >= p_crit:      #fail to reject ADF-h_0 -> non-stationary           
+        if res_adf[1] >= p_crit:    #fail to reject ADF-h_0 -> non-stationary           
             return 1                #non-stationary
         else:                       #reject ADF-h_0 -> stationary
             return 0                #reject ADF_h_= -> stationary
                 
     def ts_adf(self, **kwargs):
-        return self.apply(lambda row: self.adf_stat(row[self.dt_dats], 
+        return self.apply(lambda row: self.__adf_flag(row[self.dt_dats], 
                                                 **kwargs), axis=1)
     def ts_kpss(self, **kwargs):
-        return self.apply(lambda row: self.kpss_stat(row[self.dt_dats], 
+        return self.apply(lambda row: self.__kpss_flag(row[self.dt_dats], 
                                                      **kwargs), axis=1)
             
     def ts_stationarity(self):
