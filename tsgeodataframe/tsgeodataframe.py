@@ -136,33 +136,34 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
                          "dt_dats_padded", "dt_dats_padded_asDays"]:  # Copy any custom attributes
                 object.__setattr__(self, attr, getattr(other, attr, None))
         return self
-
-
     
     def copy(self, deep=True):
         # ENSURE THAT copy TOO RETURNS A GMDATA OBJECT
         copied = super().copy(deep=deep)
         return self._constructor(copied).__finalize__(self)
     
+    
     ###########################################################################
-    # TESTING FOR STATIONARITY ################################################    
-    def adf_kpss(self, in_ts):
-        warnings.simplefilter('ignore', InterpolationWarning)
-        res_adf  = adfuller(in_ts, autolag='AIC')
-        res_kpss = kpss(in_ts, regression='c', nlags='auto')
+    # TESTING FOR STATIONARITY ################################################   
+
+    def adf_kpss(self, res_adf, res_kpss):
+        res_adf_kpss = []
+        for i,j in zip(res_adf, res_kpss):
+            if i == 1:      #fail to reject ADF-h_0 -> non-stationary           
+                if j == 1:  #reject KPSS-h_0 -> non-trend-stationary
+                    res_adf_kpss.append(1)            #fully non-stationary ts
+                else:                   #fail to reject KPSS-h_0 -> trend-stationay
+                    res_adf_kpss.append(2)            #trend-statonary - trend-removement by regression
+            else:                       #reject DF-h_0 -> stationary
+                if j == 0: #fail to reject KPSS-h_0 -> trend-stationary
+                    res_adf_kpss.append(0)            #fully stationary
+                else:                   #reject KPSS-h_0 -> non trend-stationary
+                    res_adf_kpss.append(3)            #difference stationary: trend remove by differencing
         
-        if res_adf[1] >= 0.05:      #fail to reject ADF-h_0 -> non-stationary           
-            if res_kpss[1] < 0.05:  #reject KPSS-h_0 -> non-trend-stationary
-                return 0            #fully non-stationary ts
-            else:                   #fail to reject KPSS-h_0 -> trend-stationay
-                return 2            #trend-statonary - trend-removement by regression
-        else:                       #reject DF-h_0 -> stationary
-            if res_kpss[1] >= 0.05: #fail to reject KPSS-h_0 -> trend-stationary
-                return 3            #fully stationary
-            else:                   #reject KPSS-h_0 -> non trend-stationary
-                return 1            #difference stationary: trend remove by differencing
-        
-        #TODO: Cechk again the conditions for rejection H_0 hypotethis
+        return res_adf_kpss
+            #TODO: Check again the conditions for rejection H_0 hypotethis
+            #and check the combination-results again, again and again
+
     def kpss_stat(self, in_ts, **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
         res_kpss = kpss(in_ts, **kwargs)
@@ -194,6 +195,7 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
     # END TESTING FOR STATIONARITY ############################################    
     ###########################################################################
     
+
     # FIT POLYNOMIAL MODEL ####################################################
     ###########################################################################
     def __ts_polyfit(self, in_ts, **kwargs):
