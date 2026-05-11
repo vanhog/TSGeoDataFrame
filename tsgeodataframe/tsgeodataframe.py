@@ -244,8 +244,6 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
             sd = np.std(self[column])
             edge_values = [mn + i * sd for i in edges]
         
-        
-       
         return edge_values
     
 
@@ -267,10 +265,12 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
     def apply_mean(self, featurename):
         return self.apply(lambda row: row[featurename]*50, axis=1)
 
-
-
-
 # STATICS #####################################################################
+
+
+
+# READER  #####################################################################
+
 def read_bbd_tl5_gmfile(geofile, layer = None, engine='fiona'):
     
     datepattern = r'date_\d{8}'
@@ -311,7 +311,7 @@ def read_bbd_tl5_gmfile(geofile, layer = None, engine='fiona'):
     
     gpd.options.io_engine = cached_engine
 
-    # should I stay or should i go
+    # should I stay or should I go
     data.index = data['PS_ID']
     data = data.drop('PS_ID', axis=1)
     dt_dats,\
