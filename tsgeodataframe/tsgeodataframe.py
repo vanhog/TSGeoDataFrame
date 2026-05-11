@@ -97,6 +97,12 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
         object.__setattr__(self, "dt_dats", dats)
         object.__setattr__(self, "nodats", nodats)  
         
+        if len(dats) == 0:
+            raise ValueError(
+                "TSGeoDataFrame requires at least one timestamp column in the GeoDataFrame "
+                "columns to build its internal day system."
+            )
+        
         # REFORMULATE TIME LINE IN NUMBER OF DAYS FROM BEGINNING
         dats_asDays = [int((i - dats[0]).days) for i in dats[1:]]
         dats_asDays = [0] + dats_asDays
