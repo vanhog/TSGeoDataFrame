@@ -84,36 +84,62 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
         All values are stored as attributes of the GeoDataFrame.
         """
         
-        dats            = []
-        nodats          = []
-        
-        # SEPRERATE ACQUISITION DAYS FROM NON-DATE VALUES
-        for i in self.columns:
-            if isinstance(i, pd.Timestamp):
-                dats.append(i)
-            else:
-                nodats.append(i)
-        
-        object.__setattr__(self, "dt_dats", dats)
-        object.__setattr__(self, "nodats", nodats)  
-        
-        if len(dats) == 0:
-            raise ValueError(
-                "TSGeoDataFrame requires at least one timestamp column in the GeoDataFrame "
-                "columns to build its internal day system."
-            )
-        
-        # REFORMULATE TIME LINE IN NUMBER OF DAYS FROM BEGINNING
-        dats_asDays = [int((i - dats[0]).days) for i in dats[1:]]
-        dats_asDays = [0] + dats_asDays
-        object.__setattr__(self, "dt_dats_asDays", dats_asDays)
-        
-        # CALCULATE ALL REVISITING PERIODS 
-        dats_diffs = [
-            int((j-i).days) for i,j in 
-            zip(dats[0:-1], dats[1:])
-            ]
-        object.__setattr__(self, "dt_dats_diffs", dats_diffs) 
+        if self.dt_dats is not None:
+            # Use provided dt_dats
+            if self.nodats is None:
+                # Compute nodats as columns not in dt_dats
+                nodats = [col for col in self.columns if col not in self.dt_dats]
+                object.__setattr__(self, "nodats", nodats)
+            
+            if len(self.dt_dats) == 0:
+                raise ValueError(
+                    "TSGeoDataFrame requires at least one timestamp in dt_dats "
+                    "to build its internal day system."
+                )
+            
+            # REFORMULATE TIME LINE IN NUMBER OF DAYS FROM BEGINNING
+            dats_asDays = [int((i - self.dt_dats[0]).days) for i in self.dt_dats[1:]]
+            dats_asDays = [0] + dats_asDays
+            object.__setattr__(self, "dt_dats_asDays", dats_asDays)
+            
+            # CALCULATE ALL REVISITING PERIODS 
+            dats_diffs = [
+                int((j-i).days) for i,j in 
+                zip(self.dt_dats[:-1], self.dt_dats[1:])
+                ]
+            object.__setattr__(self, "dt_dats_diffs", dats_diffs)
+        else:
+            # Compute from columns
+            dats = []
+            nodats = []
+            
+            # SEPRERATE ACQUISITION DAYS FROM NON-DATE VALUES
+            for i in self.columns:
+                if isinstance(i, pd.Timestamp):
+                    dats.append(i)
+                else:
+                    nodats.append(i)
+            
+            object.__setattr__(self, "dt_dats", dats)
+            object.__setattr__(self, "nodats", nodats)  
+            
+            if len(dats) == 0:
+                raise ValueError(
+                    "TSGeoDataFrame requires at least one timestamp column in the GeoDataFrame "
+                    "columns to build its internal day system."
+                )
+            
+            # REFORMULATE TIME LINE IN NUMBER OF DAYS FROM BEGINNING
+            dats_asDays = [int((i - dats[0]).days) for i in dats[1:]]
+            dats_asDays = [0] + dats_asDays
+            object.__setattr__(self, "dt_dats_asDays", dats_asDays)
+            
+            # CALCULATE ALL REVISITING PERIODS 
+            dats_diffs = [
+                int((j-i).days) for i,j in 
+                zip(dats[:-1], dats[1:])
+                ]
+            object.__setattr__(self, "dt_dats_diffs", dats_diffs) 
         
              
         
