@@ -223,7 +223,8 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
             
     def ts_stationarity(self):
         return self.apply(lambda row: 
-                          self.adf_kpss(row[self.dt_dats]), axis=1)
+                         # self.adf_kpss(row[self.dt_dats]), axis=1)
+                         self.adf_kpss(self.ts_adf, self.ts_kpss))
     # END TESTING FOR STATIONARITY ############################################    
     ###########################################################################
     
