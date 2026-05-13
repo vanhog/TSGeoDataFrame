@@ -1,6 +1,6 @@
 '''
 Created on March, 17th 2025
-WORKS but gives GeodataFrame bakc
+WORKS but gives GeodataFrame back
 @author: hog
 '''
 
@@ -84,62 +84,30 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
         All values are stored as attributes of the GeoDataFrame.
         """
         
-        if self.dt_dats is not None:
-            # Use provided dt_dats
-            if self.nodats is None:
-                # Compute nodats as columns not in dt_dats
-                nodats = [col for col in self.columns if col not in self.dt_dats]
-                object.__setattr__(self, "nodats", nodats)
-            
-            if len(self.dt_dats) == 0:
-                raise ValueError(
-                    "TSGeoDataFrame requires at least one timestamp in dt_dats "
-                    "to build its internal day system."
-                )
-            
-            # REFORMULATE TIME LINE IN NUMBER OF DAYS FROM BEGINNING
-            dats_asDays = [int((i - self.dt_dats[0]).days) for i in self.dt_dats[1:]]
-            dats_asDays = [0] + dats_asDays
-            object.__setattr__(self, "dt_dats_asDays", dats_asDays)
-            
-            # CALCULATE ALL REVISITING PERIODS 
-            dats_diffs = [
-                int((j-i).days) for i,j in 
-                zip(self.dt_dats[:-1], self.dt_dats[1:])
-                ]
-            object.__setattr__(self, "dt_dats_diffs", dats_diffs)
-        else:
-            # Compute from columns
-            dats = []
-            nodats = []
-            
-            # SEPRERATE ACQUISITION DAYS FROM NON-DATE VALUES
-            for i in self.columns:
-                if isinstance(i, pd.Timestamp):
-                    dats.append(i)
-                else:
-                    nodats.append(i)
-            
-            object.__setattr__(self, "dt_dats", dats)
-            object.__setattr__(self, "nodats", nodats)  
-            
-            if len(dats) == 0:
-                raise ValueError(
-                    "TSGeoDataFrame requires at least one timestamp column in the GeoDataFrame "
-                    "columns to build its internal day system."
-                )
-            
-            # REFORMULATE TIME LINE IN NUMBER OF DAYS FROM BEGINNING
-            dats_asDays = [int((i - dats[0]).days) for i in dats[1:]]
-            dats_asDays = [0] + dats_asDays
-            object.__setattr__(self, "dt_dats_asDays", dats_asDays)
-            
-            # CALCULATE ALL REVISITING PERIODS 
-            dats_diffs = [
-                int((j-i).days) for i,j in 
-                zip(dats[:-1], dats[1:])
-                ]
-            object.__setattr__(self, "dt_dats_diffs", dats_diffs) 
+        dats            = []
+        nodats          = []
+        
+        # SEPRERATE ACQUISITION DAYS FROM NON-DATE VALUES
+        for i in self.columns:
+            if isinstance(i, pd.Timestamp):
+                dats.append(i)
+            else:
+                nodats.append(i)
+        
+        object.__setattr__(self, "dt_dats", dats)
+        object.__setattr__(self, "nodats", nodats)  
+        
+        # REFORMULATE TIME LINE IN NUMBER OF DAYS FROM BEGINNING
+        dats_asDays = [int((i - dats[0]).days) for i in dats[1:]]
+        dats_asDays = [0] + dats_asDays
+        object.__setattr__(self, "dt_dats_asDays", dats_asDays)
+        
+        # CALCULATE ALL REVISITING PERIODS 
+        dats_diffs = [
+            int((j-i).days) for i,j in 
+            zip(dats[0:-1], dats[1:])
+            ]
+        object.__setattr__(self, "dt_dats_diffs", dats_diffs) 
         
              
         
@@ -168,67 +136,67 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
                          "dt_dats_padded", "dt_dats_padded_asDays"]:  # Copy any custom attributes
                 object.__setattr__(self, attr, getattr(other, attr, None))
         return self
+
+
     
     def copy(self, deep=True):
         # ENSURE THAT copy TOO RETURNS A GMDATA OBJECT
         copied = super().copy(deep=deep)
         return self._constructor(copied).__finalize__(self)
     
-
     ###########################################################################
-    # TESTING FOR STATIONARITY ################################################   
-
-    def adf_kpss(self, res_adf, res_kpss):
-        res_adf_kpss = []
-        for i,j in zip(res_adf, res_kpss):
-            if i == 1:      #fail to reject ADF-h_0 -> non-stationary           
-                if j == 1:  #reject KPSS-h_0 -> non-trend-stationary
-                    res_adf_kpss.append(1)            #fully non-stationary ts
-                else:                   #fail to reject KPSS-h_0 -> trend-stationay
-                    res_adf_kpss.append(2)            #trend-statonary - trend-removement by regression
-            else:                       #reject DF-h_0 -> stationary
-                if j == 0: #fail to reject KPSS-h_0 -> trend-stationary
-                    res_adf_kpss.append(0)            #fully stationary
-                else:                   #reject KPSS-h_0 -> non trend-stationary
-                    res_adf_kpss.append(3)            #difference stationary: trend remove by differencing
-        
-        return res_adf_kpss
-            #TODO: Check again the conditions for rejection H_0 hypotethis
-            #and check the combination-results again, again and again
-
-    def __kpss_flag(self, in_ts, p_crit=0.05, **kwargs):
+    # TESTING FOR STATIONARITY ################################################    
+    def adf_kpss(self, in_ts):
         warnings.simplefilter('ignore', InterpolationWarning)
-        res_kpss = kpss(in_ts, **kwargs)
+        res_adf  = adfuller(in_ts, autolag='AIC')
+        res_kpss = kpss(in_ts, regression='c', nlags='auto')
+        
+        if res_adf[1] >= 0.05:      #fail to reject ADF-h_0 -> non-stationary           
+            if res_kpss[1] < 0.05:  #reject KPSS-h_0 -> non-trend-stationary
+                return 0            #fully non-stationary ts
+            else:                   #fail to reject KPSS-h_0 -> trend-stationay
+                return 2            #trend-statonary - trend-removement by regression
+        else:                       #reject DF-h_0 -> stationary
+            if res_kpss[1] >= 0.05: #fail to reject KPSS-h_0 -> trend-stationary
+                return 3            #fully stationary
+            else:                   #reject KPSS-h_0 -> non trend-stationary
+                return 1            #difference stationary: trend remove by differencing
+        
+        #Ín general
+        #If p < or <= 0.05 -> reject H_0 (kpss=stationary H_1
+        #                                 adf=non-stationary H_a)
+        #If p > or >= 0.05 -> fail to reject H_0
+    def kpss_stat(self, in_ts, model='c', p_crit=0.05, **kwargs):
+        warnings.simplefilter('ignore', InterpolationWarning)
+        res_kpss = kpss(in_ts, regression=model, nlags='auto')
         
         if res_kpss[1] >= p_crit:   #fail to reject KPSS-h_0 -> trend-stationary           
             return 1                #trend-statonary - trend-removement by regression
-        else:                       #reject KPSS-h_0 -> stationary
+        else:                       
             return 0                #reject KPSS-h_0 -> non-trend-stationary
     
-    def __adf_flag(self, in_ts, p_crit=0.05, **kwargs):
+    def adf_stat(self, in_ts, p_crit=0.05, autolag='AIC', **kwargs):
         warnings.simplefilter('ignore', InterpolationWarning)
-        res_adf = adfuller(in_ts, **kwargs)
+        res_adf = adfuller(in_ts, autolag=autolag)
         
-        if res_adf[1] >= p_crit:    #fail to reject ADF-h_0 -> non-stationary           
+        if res_adf[1] > p_crit:     #fail to reject ADF-h_0 -> non-stationary           
             return 1                #non-stationary
-        else:                       #reject ADF-h_0 -> stationary
-            return 0                #reject ADF_h_= -> stationary
+        else:                       
+            return 0                #reject ADF_h_0 -> H_a stationary
                 
-    def ts_adf(self, **kwargs):
-        return self.apply(lambda row: self.__adf_flag(row[self.dt_dats], 
-                                                **kwargs), axis=1)
-    def ts_kpss(self, **kwargs):
-        return self.apply(lambda row: self.__kpss_flag(row[self.dt_dats], 
-                                                     **kwargs), axis=1)
+    def ts_adf(self, autolag='AIC'):
+        return self.apply(lambda row: self.adf_stat(row[self.dt_dats], 
+                                                autolag=autolag), axis=1)
+    def ts_kpss(self, model='c'):
+        return self.apply(lambda row: self.kpss_stat(row[self.dt_dats], 
+                                                     model), axis=1)
             
     def ts_stationarity(self):
         return self.apply(lambda row: 
-                         # self.adf_kpss(row[self.dt_dats]), axis=1)
-                         self.adf_kpss(self.ts_adf, self.ts_kpss))
+                          self.adf_kpss(row[self.dt_dats]), axis=1)
     # END TESTING FOR STATIONARITY ############################################    
     ###########################################################################
     
-
     # FIT POLYNOMIAL MODEL ####################################################
     ###########################################################################
     def __ts_polyfit(self, in_ts, **kwargs):
@@ -250,7 +218,7 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
     # END FIT POLYNOMIAL MODEL ################################################
     ###########################################################################
     
-    def df_hist(self, column=None): #dummy dummy dummy dummy
+    def df_hist(self, column=None):
         if column==None or not(is_numeric_dtype(self[column])): 
             return -2
         else:
@@ -277,6 +245,8 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
             sd = np.std(self[column])
             edge_values = [mn + i * sd for i in edges]
         
+        
+       
         return edge_values
     
 
@@ -298,12 +268,10 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
     def apply_mean(self, featurename):
         return self.apply(lambda row: row[featurename]*50, axis=1)
 
+
+
+
 # STATICS #####################################################################
-
-
-
-# READER  #####################################################################
-
 def read_bbd_tl5_gmfile(geofile, layer = None, engine='fiona'):
     
     datepattern = r'date_\d{8}'
@@ -344,7 +312,7 @@ def read_bbd_tl5_gmfile(geofile, layer = None, engine='fiona'):
     
     gpd.options.io_engine = cached_engine
 
-    # should I stay or should I go
+    # should I stay or should i go
     data.index = data['PS_ID']
     data = data.drop('PS_ID', axis=1)
     dt_dats,\
