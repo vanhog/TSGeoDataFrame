@@ -146,21 +146,23 @@ class TSGeoDataFrame(gpd.GeoDataFrame):
     
     ###########################################################################
     # TESTING FOR STATIONARITY ################################################    
+    # https://www.statsmodels.org/dev/examples/notebooks/generated/stationarity_detrending_adf_kpss.html
+
     def adf_kpss(self, in_ts):
         warnings.simplefilter('ignore', InterpolationWarning)
         res_adf  = adfuller(in_ts, autolag='AIC')
         res_kpss = kpss(in_ts, regression='c', nlags='auto')
         
-        if res_adf[1] >= 0.05:      #fail to reject ADF-h_0 -> non-stationary           
-            if res_kpss[1] < 0.05:  #reject KPSS-h_0 -> non-trend-stationary
-                return 0            #fully non-stationary ts
-            else:                   #fail to reject KPSS-h_0 -> trend-stationay
-                return 2            #trend-statonary - trend-removement by regression
-        else:                       #reject DF-h_0 -> stationary
-            if res_kpss[1] >= 0.05: #fail to reject KPSS-h_0 -> trend-stationary
-                return 3            #fully stationary
-            else:                   #reject KPSS-h_0 -> non trend-stationary
-                return 1            #difference stationary: trend remove by differencing
+        if res_adf[1] > 0.05:       # fail to reject ADF-h_0 -> non-stationary           
+            if res_kpss[1] < 0.05:  # reject KPSS-h_0 -> non-trend-stationary
+                return 0            # fully non-stationary ts
+            else:                   # fail to reject KPSS-h_0 -> trend-stationay
+                return 2            # trend-stationary
+        else:                       # reject ADF-h_0 -> stationary
+            if res_kpss[1] >= 0.05: # fail to reject KPSS-h_0 -> trend-stationary
+                return 3            # fully stationary
+            else:                   # reject KPSS-h_0 -> non trend-stationary
+                return 1            # difference stationary: trend remove by differencing
         
         #Ín general
         #If p < or <= 0.05 -> reject H_0 (kpss=stationary H_1
